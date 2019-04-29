@@ -63,6 +63,8 @@ private[spark] class MesosCoarseGrainedSchedulerBackend(
   private lazy val hadoopDelegationTokenManager: MesosHadoopDelegationTokenManager =
     new MesosHadoopDelegationTokenManager(conf, sc.hadoopConfiguration, driverEndpoint)
 
+  private val isProxyUser = org.apache.spark.deploy.SparkHadoopUtil.get.isProxyUser(UserGroupInformation.getCurrentUser())
+
   // Blacklist a slave after this many failures
   private val MAX_SLAVE_FAILURES = 2
 
@@ -195,6 +197,9 @@ private[spark] class MesosCoarseGrainedSchedulerBackend(
     super.start()
 
     if (sc.deployMode == "client") {
+      if (isProxyUser) {
+        fetchHadoopDelegationTokens()
+      }
       launcherBackend.connect()
     }
     val startedBefore = IdHelper.startedBefore.getAndSet(true)
